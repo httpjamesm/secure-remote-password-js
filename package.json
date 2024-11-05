@@ -1,5 +1,5 @@
 {
-  "name": "pkg-name",
+  "name": "secure-remote-password-js",
   "type": "module",
   "version": "0.0.0",
   "main": "./dist/index.cjs",
@@ -22,13 +22,13 @@
     "bun"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/wobsoriano/pkg-name#readme",
+  "homepage": "https://github.com/httpjamesm/secure-remote-password-js.git",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wobsoriano/pkg-name.git"
+    "url": "git+https://github.com/httpjamesm/secure-remote-password-js.git"
   },
-  "bugs": "https://github.com/wobsoriano/pkg-name/issues",
-  "author": "Robert Soriano <sorianorobertc@gmail.com>",
+  "bugs": "https://github.com/httpjamesm/secure-remote-password-js/issues",
+  "author": "httpjamesm <contact@httpjames.space>",
   "devDependencies": {
     "@types/bun": "^1.1.10",
     "@types/jsbn": "^1.2.33",
