@@ -150,12 +150,32 @@ const g8192n =
   "60C980DD98EDD3DFFFFFFFFFFFFFFFFF";
 
 export const knownGroups = {
-  2048: new SrpGroup(new BigInteger("2"), hexToBigInt(g2048n), "5054A2048", 27),
-  3072: new SrpGroup(new BigInteger("5"), hexToBigInt(g3072n), "5054A3072", 32),
-  4096: new SrpGroup(new BigInteger("5"), hexToBigInt(g4096n), "5054A4096", 38),
-  6144: new SrpGroup(new BigInteger("5"), hexToBigInt(g6144n), "5054A6144", 43),
+  2048: new SrpGroup(
+    new BigInteger("2", 10),
+    hexToBigInt(g2048n),
+    "5054A2048",
+    27
+  ),
+  3072: new SrpGroup(
+    new BigInteger("5", 10),
+    hexToBigInt(g3072n),
+    "5054A3072",
+    32
+  ),
+  4096: new SrpGroup(
+    new BigInteger("5", 10),
+    hexToBigInt(g4096n),
+    "5054A4096",
+    38
+  ),
+  6144: new SrpGroup(
+    new BigInteger("5", 10),
+    hexToBigInt(g6144n),
+    "5054A6144",
+    43
+  ),
   8192: new SrpGroup(
-    new BigInteger("19"),
+    new BigInteger("19", 10),
     hexToBigInt(g8192n),
     "5054A8192",
     48

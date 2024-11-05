@@ -249,14 +249,16 @@ slice (without padding to size of N)
     }
 
     // First lets work on the H(H(A) ⊕ H(g)) part.
-    const nHash = new Uint8Array(
-      createHash("sha256").update(bigIntToBytes(this.group.getN())).digest()
-    );
-    const gHash = new Uint8Array(
-      createHash("sha256")
-        .update(bigIntToBytes(this.group.getGenerator()))
-        .digest()
-    );
+    const nHashBuffer = createHash("sha256")
+      .update(bigIntToBytes(this.group.getN()))
+      .digest();
+    const nHash = new Uint8Array(nHashBuffer);
+    const gHashBuffer = createHash("sha256")
+      .update(bigIntToBytes(this.group.getGenerator()))
+      .digest();
+    const gHash = new Uint8Array(gHashBuffer);
+    console.log(`nHash: ${nHashBuffer.toString("hex")}`);
+    console.log(`gHash: ${gHashBuffer.toString("hex")}`);
     let groupXOR = new Uint8Array(SHA256_SIZE);
     const length = safeXORBytes(groupXOR, nHash, gHash);
     if (length !== SHA256_SIZE) {
@@ -264,24 +266,56 @@ slice (without padding to size of N)
         `XOR had length ${length} bytes instead of  ${SHA256_SIZE}`
       );
     }
-    const groupHash = new Uint8Array(
-      createHash("sha256").update(groupXOR).digest()
-    );
+    const groupHashBuffer = createHash("sha256").update(groupXOR).digest();
+    const groupHash = new Uint8Array(groupHashBuffer);
+    console.log(`groupHash: ${groupHashBuffer.toString("hex")}`);
 
-    const uHash = new Uint8Array(
-      createHash("sha256").update(new TextEncoder().encode(uname)).digest()
-    );
+    const uHashBuffer = createHash("sha256")
+      .update(new TextEncoder().encode(uname))
+      .digest();
+    const uHash = new Uint8Array(uHashBuffer);
+    console.log(`uHash: ${uHashBuffer.toString("hex")}`);
 
-    const m = createHash("sha256");
+    let m1 = createHash("sha256");
+    m1.update(groupHash);
+    console.log("After groupHash:", m1.digest("hex"));
 
-    m.update(groupHash);
-    m.update(uHash);
-    m.update(salt);
-    m.update(bigIntToBytes(this.ephemeralPublicA));
-    m.update(bigIntToBytes(this.ephemeralPublicB));
-    m.update(this.key);
+    let m2 = createHash("sha256");
+    m2.update(groupHash);
+    m2.update(uHash);
+    console.log("After uHash:", m2.digest("hex"));
 
-    this.m = new Uint8Array(m.digest());
+    let m3 = createHash("sha256");
+    m3.update(groupHash);
+    m3.update(uHash);
+    m3.update(salt);
+    console.log("After salt:", m3.digest("hex"));
+
+    let m4 = createHash("sha256");
+    m4.update(groupHash);
+    m4.update(uHash);
+    m4.update(salt);
+    m4.update(bigIntToBytes(this.ephemeralPublicA));
+    console.log("After ephemeralPublicA:", m4.digest("hex"));
+
+    let m5 = createHash("sha256");
+    m5.update(groupHash);
+    m5.update(uHash);
+    m5.update(salt);
+    m5.update(bigIntToBytes(this.ephemeralPublicA));
+    m5.update(bigIntToBytes(this.ephemeralPublicB));
+    console.log("After ephemeralPublicB:", m5.digest("hex"));
+
+    let m6 = createHash("sha256");
+    m6.update(groupHash);
+    m6.update(uHash);
+    m6.update(salt);
+    m6.update(bigIntToBytes(this.ephemeralPublicA));
+    m6.update(bigIntToBytes(this.ephemeralPublicB));
+    m6.update(this.key);
+    console.log("After key:", m6.digest("hex"));
+
+    this.m = new Uint8Array(m6.digest());
     return this.m;
   }
 

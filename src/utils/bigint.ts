@@ -1,13 +1,13 @@
 import { BigInteger } from "jsbn";
-
 export function bigIntToBytes(bigInt: BigInteger): Uint8Array {
   let hex = bigInt.toString(16);
-  // Ensure even length
   if (hex.length % 2 !== 0) {
     hex = "0" + hex;
   }
-
-  // Convert to big-endian byte array
+  // Remove leading zeros but keep at least one byte
+  while (hex.length > 2 && hex.startsWith("00")) {
+    hex = hex.slice(2);
+  }
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
     bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
