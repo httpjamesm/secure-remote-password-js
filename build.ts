@@ -1,30 +1,29 @@
-import type { BuildConfig } from "bun";
 import dts from "bun-plugin-dts";
 import { build } from "esbuild";
 
-const defaultBuildConfig: BuildConfig = {
-  entrypoints: ["./src/index.ts"],
-  outdir: "./dist",
-};
-
 // Build ESM version
-await Bun.build({
-  ...defaultBuildConfig,
+await build({
+  entryPoints: ["./src/index.ts"],
+  outfile: "./dist/index.js",
   format: "esm",
-  naming: "[dir]/[name].js",
+  platform: "node",
+  bundle: true,
+  external: ["node:crypto"], // Mark node built-ins as external
 });
 
-// Build CJS version using esbuild
+// Build CJS version
 await build({
   entryPoints: ["./src/index.ts"],
   outfile: "./dist/index.cjs",
   format: "cjs",
   platform: "node",
   bundle: true,
+  external: ["node:crypto"],
 });
 
 // Build type declarations
 await Bun.build({
-  ...defaultBuildConfig,
+  entrypoints: ["./src/index.ts"],
+  outdir: "./dist",
   plugins: [dts()],
 });

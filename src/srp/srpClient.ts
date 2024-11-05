@@ -26,7 +26,7 @@ export class SrpClient {
   private badState = false;
 
   constructor(group: SrpGroup, v: BigInteger, k?: BigInteger) {
-    return this.newSrp(group, v, k);
+    this.newSrp(group, v, k);
   }
 
   private newSrp(group: SrpGroup, xORv: BigInteger, k?: BigInteger) {
@@ -39,7 +39,6 @@ export class SrpClient {
     }
     this.generateMySecret();
     this.makeA();
-    return this;
   }
 
   private makeLittleK(): BigInteger {

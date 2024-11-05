@@ -24,3 +24,7 @@ export const maxInt = (n1: number, ...nums: number[]): number => {
   }
   return max;
 };
+
+export const uint8ArrayToBigInt = (arr: Uint8Array): BigInteger => {
+  return new BigInteger([...arr]);
+};
