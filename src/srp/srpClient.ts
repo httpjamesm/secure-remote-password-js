@@ -25,13 +25,9 @@ export class SrpClient {
   private group: SrpGroup | null = null;
   private badState = false;
 
-  constructor(group: SrpGroup, v: BigInteger, k?: BigInteger) {
-    this.newSrp(group, v, k);
-  }
-
-  private newSrp(group: SrpGroup, xORv: BigInteger, k?: BigInteger) {
+  constructor(group: SrpGroup, x: BigInteger, k?: BigInteger) {
     this.group = group;
-    this.x = xORv;
+    this.x = x;
     if (k) {
       this.k = k;
     } else {
