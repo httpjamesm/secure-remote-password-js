@@ -248,6 +248,7 @@ slice (without padding to size of N)
       throw new Error("group is not set");
     }
     const nLen = bigIntToBytes(this.group.getN()).length;
+    console.log(`Server padding length: ${nLen}`);
 
     if (this.m !== null) {
       return this.m;
