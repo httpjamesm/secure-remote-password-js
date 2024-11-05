@@ -28,3 +28,27 @@ export const maxInt = (n1: number, ...nums: number[]): number => {
 export const uint8ArrayToBigInt = (arr: Uint8Array): BigInteger => {
   return new BigInteger([...arr]);
 };
+
+export function serverStyleHexFromBigInt(bn: BigInteger): string {
+  // Convert BigInteger to byte array
+  const bytes = bn.toByteArray();
+
+  // Convert bytes to hex string and ensure lowercase
+  const hexString = bytes
+    .map((b) => (b & 0xff).toString(16).padStart(2, "0"))
+    .join("")
+    .toLowerCase();
+
+  // Remove leading zeros
+  return hexString.replace(/^0+/, "") || "0";
+}
+
+export function setBigIntegerFromBytes(buf: Uint8Array): BigInteger {
+  // Convert bytes to hex string (big-endian)
+  const hexString = Array.from(buf)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  // Create BigInteger from hex string
+  return new BigInteger(hexString, 16);
+}

@@ -1,4 +1,9 @@
-import { bigIntToBytes, maxInt } from "../utils/bigint";
+import {
+  bigIntToBytes,
+  maxInt,
+  serverStyleHexFromBigInt,
+  setBigIntegerFromBytes,
+} from "../utils/bigint";
 import { hexToBigInt } from "../utils/hex";
 import { minExponentSize, SrpGroup } from "./srpGroup";
 import { createHash, randomBytes } from "node:crypto";
@@ -42,8 +47,8 @@ export class SrpClient {
     if (!this.group) {
       throw new Error("group is not set");
     }
-    hash.update(new Uint8Array(this.group.getN().toByteArray()));
-    hash.update(new Uint8Array(this.group.getGenerator().toByteArray()));
+    hash.update(bigIntToBytes(this.group.getN()));
+    hash.update(bigIntToBytes(this.group.getGenerator()));
     return hexToBigInt(hash.digest("hex"));
   }
 
@@ -59,7 +64,7 @@ export class SrpClient {
   }
 
   private makeA(): BigInteger {
-    if (this.ephemeralPrivate === zero) {
+    if (this.ephemeralPrivate.compareTo(zero) === 0) {
       this.generateMySecret();
     }
     if (!this.group) {
@@ -123,17 +128,21 @@ export class SrpClient {
       throw new Error("both A and B must be known to calculate u");
     }
 
+    const trimmedHexPublicA = serverStyleHexFromBigInt(this.ephemeralPublicA);
+    const trimmedHexPublicB = serverStyleHexFromBigInt(this.ephemeralPublicB);
+
     const hash = createHash("sha256");
     hash.update(
-      new TextEncoder().encode(
-        this.ephemeralPublicA.toString() + this.ephemeralPublicB.toString()
-      )
+      new TextEncoder().encode(trimmedHexPublicA + trimmedHexPublicB)
     );
 
-    this.u = new BigInteger(hash.digest().toString("hex"), 16);
+    const hashed = hash.digest();
+
+    this.u = setBigIntegerFromBytes(new Uint8Array(hashed));
     if (this.u.compareTo(zero) === 0) {
       throw new Error("u == 0, which is a bad thing");
     }
+
     return this.u;
   }
 
@@ -191,8 +200,8 @@ need that.
       throw new Error("cannot make Key with my ephemeral secret");
     }
 
-    let b = new BigInteger("0");
-    let e = new BigInteger("0");
+    let b: BigInteger;
+    let e: BigInteger;
 
     if (
       this.ephemeralPublicB.compareTo(zero) === 0 ||
@@ -201,6 +210,7 @@ need that.
     ) {
       throw new Error("not enough is known to create Key");
     }
+
     e = this.u.multiply(this.x);
     e = e.add(this.ephemeralPrivate);
 
@@ -208,12 +218,12 @@ need that.
       throw new Error("group is not set");
     }
 
-    b = this.group.getGenerator().modPow(this.x, this.group.getN());
+    b = this.group.getGenerator().modPow(this.x, this.group.getN().abs());
     b = b.multiply(this.k);
+
     b = this.ephemeralPublicB.subtract(b);
     b = b.mod(this.group.getN());
-
-    this.premasterKey = b.modPow(e, this.group.getN());
+    this.premasterKey = b.modPow(e, this.group.getN().abs());
 
     const hash = createHash("sha256");
     hash.update(new TextEncoder().encode(this.premasterKey.toString(16)));
@@ -238,7 +248,6 @@ slice (without padding to size of N)
       throw new Error("group is not set");
     }
     const nLen = bigIntToBytes(this.group.getN()).length;
-    console.log(`Server padding length: ${nLen}`);
 
     if (this.m !== null) {
       return this.m;
@@ -257,8 +266,7 @@ slice (without padding to size of N)
       .update(bigIntToBytes(this.group.getGenerator()))
       .digest();
     const gHash = new Uint8Array(gHashBuffer);
-    console.log(`nHash: ${nHashBuffer.toString("hex")}`);
-    console.log(`gHash: ${gHashBuffer.toString("hex")}`);
+
     let groupXOR = new Uint8Array(SHA256_SIZE);
     const length = safeXORBytes(groupXOR, nHash, gHash);
     if (length !== SHA256_SIZE) {
@@ -268,43 +276,11 @@ slice (without padding to size of N)
     }
     const groupHashBuffer = createHash("sha256").update(groupXOR).digest();
     const groupHash = new Uint8Array(groupHashBuffer);
-    console.log(`groupHash: ${groupHashBuffer.toString("hex")}`);
 
     const uHashBuffer = createHash("sha256")
       .update(new TextEncoder().encode(uname))
       .digest();
     const uHash = new Uint8Array(uHashBuffer);
-    console.log(`uHash: ${uHashBuffer.toString("hex")}`);
-
-    let m1 = createHash("sha256");
-    m1.update(groupHash);
-    console.log("After groupHash:", m1.digest("hex"));
-
-    let m2 = createHash("sha256");
-    m2.update(groupHash);
-    m2.update(uHash);
-    console.log("After uHash:", m2.digest("hex"));
-
-    let m3 = createHash("sha256");
-    m3.update(groupHash);
-    m3.update(uHash);
-    m3.update(salt);
-    console.log("After salt:", m3.digest("hex"));
-
-    let m4 = createHash("sha256");
-    m4.update(groupHash);
-    m4.update(uHash);
-    m4.update(salt);
-    m4.update(bigIntToBytes(this.ephemeralPublicA));
-    console.log("After ephemeralPublicA:", m4.digest("hex"));
-
-    let m5 = createHash("sha256");
-    m5.update(groupHash);
-    m5.update(uHash);
-    m5.update(salt);
-    m5.update(bigIntToBytes(this.ephemeralPublicA));
-    m5.update(bigIntToBytes(this.ephemeralPublicB));
-    console.log("After ephemeralPublicB:", m5.digest("hex"));
 
     let m6 = createHash("sha256");
     m6.update(groupHash);
@@ -313,7 +289,6 @@ slice (without padding to size of N)
     m6.update(bigIntToBytes(this.ephemeralPublicA));
     m6.update(bigIntToBytes(this.ephemeralPublicB));
     m6.update(this.key);
-    console.log("After key:", m6.digest("hex"));
 
     this.m = new Uint8Array(m6.digest());
     return this.m;
