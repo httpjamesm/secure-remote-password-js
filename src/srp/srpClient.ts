@@ -22,26 +22,40 @@ export class SrpClient {
   private m: Uint8Array | null = null;
   private cProof: Uint8Array | null = null;
   private isServerProved: boolean = false;
-  private group: SrpGroup;
+  private group: SrpGroup | null = null;
   private badState = false;
 
   constructor(group: SrpGroup, v: BigInteger, k?: BigInteger) {
-    this.group = group;
+    return this.newSrp(group, v, k);
+  }
 
+  private newSrp(group: SrpGroup, xORv: BigInteger, k?: BigInteger) {
+    this.group = group;
+    this.x = xORv;
     if (k) {
       this.k = k;
     } else {
+      this.k = this.makeLittleK();
     }
+    this.generateMySecret();
+    this.makeA();
+    return this;
   }
 
   private makeLittleK(): BigInteger {
     const hash = createHash("sha256");
+    if (!this.group) {
+      throw new Error("group is not set");
+    }
     hash.update(new Uint8Array(this.group.getN().toByteArray()));
     hash.update(new Uint8Array(this.group.getGenerator().toByteArray()));
     return hexToBigInt(hash.digest("hex"));
   }
 
   private generateMySecret(): BigInteger {
+    if (!this.group) {
+      throw new Error("group is not set");
+    }
     const eSize = maxInt(this.group.exponentSize, minExponentSize);
     // get eSize random bytes
     const bytes = randomBytes(eSize);
@@ -52,6 +66,9 @@ export class SrpClient {
   private makeA(): BigInteger {
     if (this.ephemeralPrivate === zero) {
       this.generateMySecret();
+    }
+    if (!this.group) {
+      throw new Error("group is not set");
     }
     this.ephemeralPublicA = this.group
       .getGenerator()
@@ -77,11 +94,17 @@ export class SrpClient {
     if (this.x.equals(zero)) {
       throw new Error("x must be known to calculate v");
     }
+    if (!this.group) {
+      throw new Error("group is not set");
+    }
     this.v = this.group.getGenerator().modPow(this.x, this.group.getN());
     return this.v;
   }
 
   public isPublicValid(AorB: BigInteger): boolean {
+    if (!this.group) {
+      throw new Error("group is not set");
+    }
     if (this.group.getGenerator().compareTo(zero) === 0) {
       return false;
     }
@@ -186,6 +209,10 @@ need that.
     e = this.u.multiply(this.x);
     e = e.add(this.ephemeralPrivate);
 
+    if (!this.group) {
+      throw new Error("group is not set");
+    }
+
     b = this.group.getGenerator().modPow(this.x, this.group.getN());
     b = b.multiply(this.k);
     b = this.ephemeralPublicB.subtract(b);
@@ -212,6 +239,9 @@ We will use math/big Bytes() to get the absolute value as a big-endian byte
 slice (without padding to size of N)
 */
   public computeM(salt: Uint8Array, uname: string): Uint8Array {
+    if (!this.group) {
+      throw new Error("group is not set");
+    }
     const nLen = bigIntToBytes(this.group.getN()).length;
     console.log(`Server padding length: ${nLen}`);
 
