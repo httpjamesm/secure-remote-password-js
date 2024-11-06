@@ -48,18 +48,18 @@ test("srp with 8 character password", () => {
   runSrpTest(8);
 });
 
+test("srp with 9 character password", () => {
+  runSrpTest(9);
+});
+
 test("srp with 16 character password", () => {
   runSrpTest(16);
 });
 
-test("srp with 32 character password", () => {
-  runSrpTest(32);
+test("srp with 17 character password", () => {
+  runSrpTest(17);
 });
 
-test("srp with 64 character password", () => {
-  runSrpTest(64);
-});
-
-test("srp with 100 character password", () => {
-  runSrpTest(100);
+test("srp with random length password", () => {
+  runSrpTest(Math.floor(Math.random() * 100));
 });

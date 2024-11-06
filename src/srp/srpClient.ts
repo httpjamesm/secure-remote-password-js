@@ -148,20 +148,23 @@ export class SrpClient {
     if (!this.group) {
       throw new Error("group is not set");
     }
-    if (this.group.getGenerator().compareTo(zero) === 0) {
+
+    const N = this.group.getN();
+
+    // Ensure AorB is greater than 0 and less than N
+    if (AorB.compareTo(zero) <= 0 || AorB.compareTo(N) >= 0) {
       return false;
     }
 
-    if (AorB.mod(this.group.getGenerator()).compareTo(zero) === 0) {
-      return false;
-    }
+    // Ensure gcd(AorB, N) == 1
     const bigOne = new BigInteger("1");
-    if (AorB.gcd(this.group.getN()).compareTo(bigOne) !== 0) {
+    if (AorB.gcd(N).compareTo(bigOne) !== 0) {
       return false;
     }
 
     return true;
   }
+
   private calculateU(): BigInteger {
     if (
       !this.isPublicValid(this.ephemeralPublicB) ||
