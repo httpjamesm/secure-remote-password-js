@@ -29,8 +29,15 @@ export class SrpClient {
   private isServerProved: boolean = false;
   private group: SrpGroup | null = null;
   private badState = false;
+  private isServer = false;
 
-  constructor(group: SrpGroup, x: BigInteger, k?: BigInteger) {
+  constructor(
+    group: SrpGroup,
+    x: BigInteger,
+    k?: BigInteger,
+    party: "client" | "server" = "client"
+  ) {
+    this.isServer = party === "server";
     this.group = group;
     this.x = x;
     if (k) {
@@ -74,6 +81,38 @@ export class SrpClient {
       .getGenerator()
       .modPow(this.ephemeralPrivate, this.group.getN());
     return this.ephemeralPublicA;
+  }
+
+  private makeB(): BigInteger {
+    // Absolute Prerequisites: Group, isServer, v
+    if (this.group === null) {
+      throw new Error("group is not set");
+    }
+    if (!this.isServer) {
+      throw new Error("isServer is not set");
+    }
+    if (this.v.compareTo(zero) === 0) {
+      throw new Error("v is not set");
+    }
+    // if no k, make k
+    if (this.k.compareTo(zero) === 0) {
+      this.k = this.makeLittleK();
+    }
+
+    // if ephemeralPrivate is 0, generate ephemeralPrivate
+    if (this.ephemeralPrivate.compareTo(zero) === 0) {
+      this.generateMySecret();
+    }
+    // B = kv + g^b  (term1 is kv, term2 is g^b)
+    // We also do some modular reduction on some of our intermediate values
+    let term1 = this.k.multiply(this.v);
+    let term2 = this.group
+      .getGenerator()
+      .modPow(this.ephemeralPrivate, this.group.getN());
+    term1 = this.group.reduce(term1);
+    this.ephemeralPublicB = term1.add(term2);
+    this.ephemeralPublicB = this.group.reduce(this.ephemeralPublicB);
+    return this.ephemeralPublicB;
   }
 
   private isUValid(): boolean {
@@ -137,12 +176,14 @@ export class SrpClient {
     );
 
     const hashed = hash.digest();
+    console.log("u hashed: ", hashed.toString("hex"));
 
     this.u = setBigIntegerFromBytes(new Uint8Array(hashed));
     if (this.u.compareTo(zero) === 0) {
       throw new Error("u == 0, which is a bad thing");
     }
-
+    // print u as hex
+    console.log("u:", this.u.toString());
     return this.u;
   }
 
@@ -200,30 +241,54 @@ need that.
       throw new Error("cannot make Key with my ephemeral secret");
     }
 
+    console.log(this.ephemeralPrivate.toString());
+
     let b: BigInteger;
     let e: BigInteger;
-
-    if (
-      this.ephemeralPublicB.compareTo(zero) === 0 ||
-      this.k.compareTo(zero) === 0 ||
-      this.x.compareTo(zero) === 0
-    ) {
-      throw new Error("not enough is known to create Key");
-    }
-
-    e = this.u.multiply(this.x);
-    e = e.add(this.ephemeralPrivate);
 
     if (!this.group) {
       throw new Error("group is not set");
     }
 
-    b = this.group.getGenerator().modPow(this.x, this.group.getN().abs());
-    b = b.multiply(this.k);
+    if (this.isServer) {
+      // S = (Av^u) ^ b
+      if (
+        this.v.compareTo(zero) === 0 ||
+        this.ephemeralPublicA.compareTo(zero) === 0
+      ) {
+        throw new Error("not enough is known to create Key");
+      }
+      b = this.v.modPow(this.u, this.group.getN());
+      b = b.multiply(this.ephemeralPublicA);
+      e = this.ephemeralPrivate;
+    } else {
+      // S = (B - kg^x) ^ (a + ux)
+      if (
+        this.ephemeralPublicB.compareTo(zero) === 0 ||
+        this.k.compareTo(zero) === 0 ||
+        this.x.compareTo(zero) === 0
+      ) {
+        throw new Error("not enough is known to create Key");
+      }
 
-    b = this.ephemeralPublicB.subtract(b);
-    b = b.mod(this.group.getN());
+      e = this.u.multiply(this.x);
+      console.log("e after u*x:", e.toString());
+      e = e.add(this.ephemeralPrivate);
+      console.log("e after e+ephemeralPrivate:", e.toString());
+
+      b = this.group.getGenerator().modPow(this.x, this.group.getN().abs());
+      console.log("b after generator^x mod N:", b.toString());
+      b = b.multiply(this.k);
+      console.log("b after b*k:", b.toString());
+      b = this.ephemeralPublicB.subtract(b);
+      console.log("b after b-ephemeralPublicB:", b.toString());
+      b = b.mod(this.group.getN());
+      console.log("b after b mod N:", b.toString());
+    }
+
     this.premasterKey = b.modPow(e, this.group.getN().abs());
+    // print premaster key
+    console.log(`premasterKey: ${this.premasterKey.toString()}`);
 
     const hash = createHash("sha256");
     hash.update(new TextEncoder().encode(this.premasterKey.toString(16)));
@@ -282,6 +347,36 @@ slice (without padding to size of N)
       .update(new TextEncoder().encode(uname))
       .digest();
     const uHash = new Uint8Array(uHashBuffer);
+
+    let m1 = createHash("sha256");
+    m1.update(groupHash);
+    console.log("m1:", m1.digest().toString("hex"));
+
+    let m2 = createHash("sha256");
+    m2.update(groupHash);
+    m2.update(uHash);
+    console.log("m2:", m2.digest().toString("hex"));
+
+    let m3 = createHash("sha256");
+    m3.update(groupHash);
+    m3.update(uHash);
+    m3.update(salt);
+    console.log("m3:", m3.digest().toString("hex"));
+
+    let m4 = createHash("sha256");
+    m4.update(groupHash);
+    m4.update(uHash);
+    m4.update(salt);
+    m4.update(bigIntToBytes(this.ephemeralPublicA));
+    console.log("m4:", m4.digest().toString("hex"));
+
+    let m5 = createHash("sha256");
+    m5.update(groupHash);
+    m5.update(uHash);
+    m5.update(salt);
+    m5.update(bigIntToBytes(this.ephemeralPublicA));
+    m5.update(bigIntToBytes(this.ephemeralPublicB));
+    console.log("m5:", m5.digest().toString("hex"));
 
     let m6 = createHash("sha256");
     m6.update(groupHash);

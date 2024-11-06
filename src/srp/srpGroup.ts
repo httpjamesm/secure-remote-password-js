@@ -27,6 +27,10 @@ export class SrpGroup {
   public getGenerator(): BigInteger {
     return this.g;
   }
+
+  public reduce(x: BigInteger): BigInteger {
+    return x.mod(this.n);
+  }
 }
 
 const g2048n =
