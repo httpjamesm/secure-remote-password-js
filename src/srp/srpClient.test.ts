@@ -9,7 +9,9 @@ const runSrpTest = (passwordLength: number) => {
   const salt = new Uint8Array(randomBytes(16));
   const username = "billgates";
   const passwordBytes = new Uint8Array(randomBytes(passwordLength));
-  const passwordString = Buffer.from(passwordBytes).toString("base64");
+  const passwordString = Buffer.from(passwordBytes)
+    .toString("base64")
+    .substring(0, passwordLength);
   const x = uint8ArrayToBigInt(
     new Uint8Array(simpleKDF(passwordString, salt).buffer)
   );
