@@ -30,6 +30,7 @@ export class SrpClient {
   private group: SrpGroup | null = null;
   private badState = false;
   private isServer = false;
+  private debug: boolean = false;
 
   constructor(
     group: SrpGroup,
@@ -183,14 +184,13 @@ export class SrpClient {
     );
 
     const hashed = hash.digest();
-    console.log("u hashed: ", hashed.toString("hex"));
+    this.debug && console.log("u hash:", hashed.toString("hex"));
 
     this.u = setBigIntegerFromBytes(new Uint8Array(hashed));
     if (this.u.compareTo(zero) === 0) {
       throw new Error("u == 0, which is a bad thing");
     }
-    // print u as hex
-    console.log("u:", this.u.toString());
+    this.debug && console.log("u:", this.u.toString(16));
     return this.u;
   }
 
@@ -258,7 +258,8 @@ need that.
       throw new Error("cannot make Key with my ephemeral secret");
     }
 
-    console.log(this.ephemeralPrivate.toString());
+    this.debug &&
+      console.log("ephemeral private:", this.ephemeralPrivate.toString(16));
 
     let b: BigInteger;
     let e: BigInteger;
@@ -289,23 +290,22 @@ need that.
       }
 
       e = this.u.multiply(this.x);
-      console.log("e after u*x:", e.toString());
+      this.debug && console.log("e after u*x:", e.toString(16));
       e = e.add(this.ephemeralPrivate);
-      console.log("e after e+ephemeralPrivate:", e.toString());
+      this.debug && console.log("e after e+ephemeralPrivate:", e.toString(16));
 
       b = this.group.getGenerator().modPow(this.x, this.group.getN().abs());
-      console.log("b after generator^x mod N:", b.toString());
+      this.debug && console.log("b after generator^x mod N:", b.toString(16));
       b = b.multiply(this.k);
-      console.log("b after b*k:", b.toString());
+      this.debug && console.log("b after b*k:", b.toString(16));
       b = this.ephemeralPublicB.subtract(b);
-      console.log("b after b-ephemeralPublicB:", b.toString());
+      this.debug && console.log("b after b-ephemeralPublicB:", b.toString(16));
       b = b.mod(this.group.getN());
-      console.log("b after b mod N:", b.toString());
+      this.debug && console.log("b after b mod N:", b.toString(16));
     }
 
     this.premasterKey = b.modPow(e, this.group.getN().abs());
-    // print premaster key
-    console.log(`premasterKey: ${this.premasterKey.toString()}`);
+    this.debug && console.log("premasterKey:", this.premasterKey.toString(16));
 
     const hash = createHash("sha256");
     hash.update(new TextEncoder().encode(this.premasterKey.toString(16)));
@@ -330,7 +330,7 @@ slice (without padding to size of N)
       throw new Error("group is not set");
     }
     const nLen = bigIntToBytes(this.group.getN()).length;
-    console.log(`Server padding length: ${nLen}`);
+    this.debug && console.log("Server padding length:", nLen);
 
     if (this.m !== null) {
       return this.m;
@@ -367,25 +367,25 @@ slice (without padding to size of N)
 
     let m1 = createHash("sha256");
     m1.update(groupHash);
-    console.log("m1:", m1.digest().toString("hex"));
+    this.debug && console.log("m1:", m1.digest().toString("hex"));
 
     let m2 = createHash("sha256");
     m2.update(groupHash);
     m2.update(uHash);
-    console.log("m2:", m2.digest().toString("hex"));
+    this.debug && console.log("m2:", m2.digest().toString("hex"));
 
     let m3 = createHash("sha256");
     m3.update(groupHash);
     m3.update(uHash);
     m3.update(salt);
-    console.log("m3:", m3.digest().toString("hex"));
+    this.debug && console.log("m3:", m3.digest().toString("hex"));
 
     let m4 = createHash("sha256");
     m4.update(groupHash);
     m4.update(uHash);
     m4.update(salt);
     m4.update(bigIntToBytes(this.ephemeralPublicA));
-    console.log("m4:", m4.digest().toString("hex"));
+    this.debug && console.log("m4:", m4.digest().toString("hex"));
 
     let m5 = createHash("sha256");
     m5.update(groupHash);
@@ -393,7 +393,7 @@ slice (without padding to size of N)
     m5.update(salt);
     m5.update(bigIntToBytes(this.ephemeralPublicA));
     m5.update(bigIntToBytes(this.ephemeralPublicB));
-    console.log("m5:", m5.digest().toString("hex"));
+    this.debug && console.log("m5:", m5.digest().toString("hex"));
 
     let m6 = createHash("sha256");
     m6.update(groupHash);
@@ -403,7 +403,7 @@ slice (without padding to size of N)
     m6.update(bigIntToBytes(this.ephemeralPublicB));
     m6.update(this.key);
     const m6Digest = m6.digest();
-    console.log("m6:", m6Digest.toString("hex"));
+    this.debug && console.log("m6:", m6Digest.toString("hex"));
 
     this.m = new Uint8Array(m6Digest.buffer);
     return this.m;
@@ -456,4 +456,8 @@ slice (without padding to size of N)
     this.cProof = new Uint8Array(hash.digest());
     return this.cProof;
   }
+
+  public setDebug = (enabled: boolean): void => {
+    this.debug = enabled;
+  };
 }
