@@ -102,3 +102,7 @@ if (serverIsLegit && clientIsLegit) {
   // The shared key can now be used for secure communication
 }
 ```
+
+### Encoding Notes
+
+When transporting data between client and server, you may choose to encode the data in hex, base64 or just utf-8 for big integers. Base64 is recommended for consistency.
