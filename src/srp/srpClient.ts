@@ -10,6 +10,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { BigInteger } from "jsbn";
 import { safeXORBytes } from "../utils/ops";
 import { constantTimeEqual } from "../utils/compare";
+import { makeLittleK } from "./littleK";
 
 // mathematical constants
 const zero = new BigInteger("0");
@@ -61,13 +62,10 @@ export class SrpClient {
 
   // k = H(N || g) - used to prevent some number theoretic attacks
   private makeLittleK(): BigInteger {
-    const hash = createHash("sha256");
     if (!this.group) {
       throw new Error("group is not set");
     }
-    hash.update(bigIntToBytes(this.group.getN()));
-    hash.update(bigIntToBytes(this.group.getGenerator()));
-    return hexToBigInt(hash.digest("hex"));
+    return makeLittleK(this.group.getN(), this.group.getGenerator());
   }
 
   // generates random ephemeral private key (a or b)
