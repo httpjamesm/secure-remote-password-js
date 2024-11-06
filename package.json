@@ -37,7 +37,6 @@
     "bun-plugin-dts": "^0.3.0"
   },
   "dependencies": {
-    "assert": "^2.1.0",
     "esbuild": "^0.24.0",
     "jsbn": "^1.1.0"
   }
