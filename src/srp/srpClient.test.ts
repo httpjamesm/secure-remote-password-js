@@ -5,12 +5,13 @@ import { randomBytes } from "node:crypto";
 import { uint8ArrayToBigInt } from "../utils";
 import { simpleKDF } from "../utils/kdf";
 
-test("srp client and server", () => {
-  // in real world, use a better KDF like argon2, seriously.
+const runSrpTest = (passwordLength: number) => {
   const salt = new Uint8Array(randomBytes(16));
   const username = "billgates";
+  const passwordBytes = new Uint8Array(randomBytes(passwordLength));
+  const passwordString = Buffer.from(passwordBytes).toString("base64");
   const x = uint8ArrayToBigInt(
-    new Uint8Array(simpleKDF("password", salt).buffer)
+    new Uint8Array(simpleKDF(passwordString, salt).buffer)
   );
 
   const client = new SrpClient(knownGroups[8192], x, undefined, "client");
@@ -24,23 +25,39 @@ test("srp client and server", () => {
     undefined,
     "server"
   );
-
   const serverB = server.ephemeralPublic();
 
   client.setOthersPublic(serverB);
-
   server.setOthersPublic(clientA);
 
   server.getKey();
   client.getKey();
 
   const serverProof = server.computeM(salt, username);
-
   const serverProved = client.goodServerProof(salt, username, serverProof);
   expect(serverProved).toBe(true);
 
   const clientProof = client.clientProof();
-
   const clientProved = server.goodClientProof(clientProof);
   expect(clientProved).toBe(true);
+};
+
+test("srp with 8 character password", () => {
+  runSrpTest(8);
+});
+
+test("srp with 16 character password", () => {
+  runSrpTest(16);
+});
+
+test("srp with 32 character password", () => {
+  runSrpTest(32);
+});
+
+test("srp with 64 character password", () => {
+  runSrpTest(64);
+});
+
+test("srp with 100 character password", () => {
+  runSrpTest(100);
 });
