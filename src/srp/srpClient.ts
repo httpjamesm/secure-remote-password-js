@@ -39,7 +39,11 @@ export class SrpClient {
   ) {
     this.isServer = party === "server";
     this.group = group;
-    this.x = x;
+    if (this.isServer) {
+      this.v = x;
+    } else {
+      this.x = x;
+    }
     if (k) {
       this.k = k;
     } else {
@@ -188,6 +192,12 @@ export class SrpClient {
   }
 
   public ephemeralPublic(): BigInteger {
+    if (this.isServer) {
+      if (this.ephemeralPublicB.compareTo(zero) === 0) {
+        this.makeB();
+      }
+      return this.ephemeralPublicB;
+    }
     if (this.ephemeralPublicA.compareTo(zero) === 0) {
       this.makeA();
     }
@@ -202,7 +212,11 @@ export class SrpClient {
     if (!this.isPublicValid(AorB)) {
       throw new Error("invalid public exponent");
     }
-    this.ephemeralPublicB = AorB;
+    if (!this.isServer) {
+      this.ephemeralPublicB = AorB;
+    } else {
+      this.ephemeralPublicA = AorB;
+    }
   }
 
   /*
@@ -385,8 +399,10 @@ slice (without padding to size of N)
     m6.update(bigIntToBytes(this.ephemeralPublicA));
     m6.update(bigIntToBytes(this.ephemeralPublicB));
     m6.update(this.key);
+    const m6Digest = m6.digest();
+    console.log("m6:", m6Digest.toString("hex"));
 
-    this.m = new Uint8Array(m6.digest());
+    this.m = new Uint8Array(m6Digest.buffer);
     return this.m;
   }
 
@@ -408,8 +424,13 @@ slice (without padding to size of N)
     return this.isServerProved;
   }
 
+  public goodClientProof(proof: Uint8Array): boolean {
+    const clientProof = this.clientProof();
+    return constantTimeEqual(clientProof, proof);
+  }
+
   public clientProof(): Uint8Array {
-    if (!this.isServerProved) {
+    if (!this.isServer && !this.isServerProved) {
       throw new Error("don't construct client proof until server is proved");
     }
     if (this.cProof !== null) {
