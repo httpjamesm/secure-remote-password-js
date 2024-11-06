@@ -4,6 +4,12 @@ This is a client and server implementation of 1Password's [fantastic SRP library
 
 [Bun](https://bun.sh) is recommended.
 
+## Installation
+
+```bash
+bun add secure-remote-password-js
+```
+
 ## Usage
 
 SRP is a fascinating protocol. I highly recommend reading through [1Password's explainer](https://blog.1password.com/developers-how-we-use-srp-and-you-can-too/) to get familiar with its innerworkings and processes first.
